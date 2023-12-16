@@ -1,0 +1,57 @@
+﻿@page "/admin/manufacturers/{Id:int}"
+
+@layout Layout
+
+<h2>Редагування виробника</h2>
+
+<MudTextField Class="mb-3" @bind-Value=@_manufacture.Name Label="Назва виробника" Variant="Variant.Text" />
+
+<MudTextField AutoGrow Class="mb-3" @bind-Value=@_manufacture.Description Label="Опис" Variant="Variant.Text" Lines="10" />
+
+<MudButton Variant="Variant.Filled" Color="Color.Success" @onclick=SaveChanges>
+    <MudText>Зберегти зміни</MudText>
+</MudButton>
+
+@code
+{
+    [Parameter]
+    public int Id { get; set; }
+
+    [Inject]
+    private IManufacturerRepository? _manufacturerRepository { get; set; }
+
+    private Manufacturer _manufacture = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _manufacture = (await _manufacturerRepository!.GetByIdAsync(Id))!;
+        if (_manufacture is null)
+        {
+            try
+            {
+                _navigationManager!.NavigateTo("/admin/manufacturers");
+            }
+            catch { }
+        }
+    }
+
+    private async Task SaveChanges()
+    {
+        if (string.IsNullOrWhiteSpace(_manufacture.Name))
+        {
+            _snackbar!.Add("Введіть назву виробника", Severity.Error);
+            return;
+        }
+
+        try
+        {
+            await _manufacturerRepository!.UpdateAsync(_manufacture);
+            _snackbar!.Add($"Інформацію про виробника {_manufacture.Name} оновлено", Severity.Success);
+            _navigationManager!.NavigateTo("/admin/manufacturers");
+        }
+        catch
+        {
+            _snackbar!.Add("Виникла помилка під час збереження інформації виробника", Severity.Error);
+        }
+    }
+}

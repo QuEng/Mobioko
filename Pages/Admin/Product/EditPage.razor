@@ -1,0 +1,116 @@
+﻿@page "/admin/products/{Id:int}"
+
+@layout Layout
+
+<h2>Редагування товару</h2>
+
+<MudTextField Class="mb-3" @bind-Value=@_product.Name Label="Назва товару" Variant="Variant.Text" />
+
+<MudTextField AutoGrow Class="mb-3" @bind-Value=@_product.Description Label="Опис" Variant="Variant.Text" Lines="10" />
+
+@if (_categories.Any())
+{
+    <MudSelect Class="mb-3" @bind-Value=@_product.Category Label="Категорія" Variant="Variant.Text">
+        @foreach (var category in _categories)
+        {
+            <MudSelectItem Value=@category>@category.Name</MudSelectItem>
+        }
+
+    </MudSelect>
+}
+
+<MudSelect Class="mb-3" @bind-Value=@_product.Manufacturer Label="Виробник" Variant="Variant.Text">
+    <MudSelectItem Value=@NullableManufacturer>Не вказано</MudSelectItem>
+    @foreach (var manufacturer in _manufacturers)
+    {
+        <MudSelectItem Value=@manufacturer>@manufacturer.Name</MudSelectItem>
+    }
+</MudSelect>
+
+<MudNumericField Class="mb-3" @bind-Value=@_product.Price Label="Вартість" Variant="Variant.Text" />
+
+<MudNumericField Class="mb-3" @bind-Value=@_product.Quantity Label="Кількість" Variant="Variant.Text" />
+
+<MudButton Variant="Variant.Filled" Color="Color.Success" @onclick=SaveChanges>
+    <MudText>Зберегти зміни</MudText>
+</MudButton>
+
+@code
+{
+    private Product _product = new();
+    private HashSet<Category> _categories = new();
+    private HashSet<Manufacturer> _manufacturers = new();
+
+    private Manufacturer? NullableManufacturer = null!;
+
+    [Parameter]
+    public int Id { get; set; }
+
+    [Inject]
+    private IProductRepository? _productRepository { get; set; }
+    [Inject]
+    private ICategoryRepository? _categoryRepository { get; set; }
+    [Inject]
+    private IManufacturerRepository? _manufacturerRepository { get; set; }
+
+    protected override void OnInitialized()
+    {
+        Task.Run(async () =>
+        {
+            _product = (await _productRepository!.GetByIdAsync(Id))!;
+        }).Wait();
+
+        if (_product is null)
+        {
+            try
+            {
+                _navigationManager!.NavigateTo("/admin/products");
+            }
+            catch { }
+        }
+
+        Task.Run(async () =>
+        {
+            _product!.Category = (await _categoryRepository!.GetByIdAsync(_product.CategoryId))!;
+            if (_product.ManufacturerId is not null)
+                _product.Manufacturer = (await _manufacturerRepository!.GetByIdAsync(_product.ManufacturerId.Value))!;
+            _categories = (await _categoryRepository!.GetAllAsync()).ToHashSet();
+            _manufacturers = (await _manufacturerRepository!.GetAllAsync()).ToHashSet();
+        }).Wait();
+
+        if (_categories.Any() is false)
+        {
+            try
+            {
+                _snackbar!.Add("Не вдалось завантажити список категорій", Severity.Error);
+                _navigationManager!.NavigateTo("/admin/products");
+            }
+            catch { }
+        }
+    }
+
+    private void SaveChanges()
+    {
+        if (string.IsNullOrWhiteSpace(_product.Name))
+        {
+            _snackbar!.Add("Введіть назву товару", Severity.Error);
+            return;
+        }
+
+        try
+        {
+            if (_product.Manufacturer is not null)
+            {
+                _product.ManufacturerId = _product.Manufacturer.Id;
+            }
+            _product.CategoryId = _product.Category!.Id;
+            _productRepository!.UpdateAsync(_product);
+            _snackbar!.Add($"Товар {_product.Name} оновлено", Severity.Success);
+            _navigationManager!.NavigateTo("/admin/products");
+        }
+        catch
+        {
+            _snackbar!.Add("Виникла помилка під час збереження товару", Severity.Error);
+        }
+    }
+}

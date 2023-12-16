@@ -1,0 +1,87 @@
+﻿@page "/admin/manufacturers"
+
+@layout Layout
+
+<h2>Виробники</h2>
+
+<MudTable Items="_manufacturers"
+          Hover="true"
+          HorizontalScrollbar="true"
+          FixedHeader="true"
+          RowsPerPage="10"
+          Elevation="0">
+
+    <ToolBarContent>
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="0" Style="width: 100%">
+            <MudTextField @bind-Value="_searchString" Placeholder="Пошук" Class="mt-0"></MudTextField>
+            <MudTooltip Text="Шукати">
+                <MudIconButton Icon="@Icons.Material.Filled.Search" ButtonType="ButtonType.Submit" OnClick="SearchManufacturers"></MudIconButton>
+            </MudTooltip>
+            <MudButton Color="Color.Success" Href="/Admin/Manufacturers/Add">
+                <MudStack Row AlignItems="AlignItems.Center">
+                    <MudIcon Icon="@Icons.Material.Filled.Add" />
+                    <MudText>Додати виробника</MudText>
+                </MudStack>
+            </MudButton>
+        </MudStack>
+    </ToolBarContent>
+
+    <HeaderContent>
+        <MudTh>Назва</MudTh>
+        <MudTh></MudTh>
+        <MudTh></MudTh>
+    </HeaderContent>
+
+    <RowTemplate>
+        <MudTd DataLabel="Назва">@context.Name</MudTd>
+        <MudTd>
+            <MudTooltip Text="Редагувати">
+                <MudIconButton Icon="@Icons.Material.Outlined.Edit" Color="Color.Secondary" Title="Видалити" Href="@($"/Admin/Manufacturers/{context.Id}")" Target="_blank"></MudIconButton>
+            </MudTooltip>
+        </MudTd>
+        <MudTd>
+            <MudTooltip Text="Видалити">
+                <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Error" Title="Видалити" OnClick="() => DeleteManufacturer(context)"></MudIconButton>
+            </MudTooltip>
+        </MudTd>
+    </RowTemplate>
+
+    <PagerContent>
+        <MudTablePager />
+    </PagerContent>
+
+</MudTable>
+
+@code
+{
+    private HashSet<Manufacturer> _allManufacturers = new();
+    private HashSet<Manufacturer> _manufacturers = new();
+
+    private string _searchString = string.Empty;
+
+    [Inject]
+    private IManufacturerRepository _manufacturerRepository{ get; set; } = default!;
+
+    protected override void OnInitialized()
+    {
+        Task.Run(async () => _manufacturers = _allManufacturers = (await _manufacturerRepository!.GetAllAsync()).ToHashSet()).Wait();
+    }
+
+    private void SearchManufacturers()
+        => _manufacturers = _allManufacturers.Where(item => item.Name.Contains(_searchString)).ToHashSet();
+
+    private async void DeleteManufacturer(Manufacturer manufacturer)
+    {
+        try
+        {
+            if (await _manufacturerRepository!.DeleteAsync(manufacturer.Id) is false)
+                throw new Exception();
+            _manufacturers.Remove(manufacturer);
+            _snackbar!.Add($"Виробника {manufacturer.Name} видалено", Severity.Success);
+        }
+        catch
+        {
+            _snackbar!.Add($"Помилка видалення виробника {manufacturer.Name}", Severity.Error);
+        }
+    }
+}

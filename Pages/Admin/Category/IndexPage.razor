@@ -1,0 +1,102 @@
+﻿@page "/admin/categories"
+
+@layout Layout
+
+<h2>Категорії</h2>
+
+<MudTable Items="_categories"
+          Hover="true"
+          HorizontalScrollbar="true"
+          FixedHeader="true"
+          RowsPerPage="10"
+          Elevation="0">
+
+    <ToolBarContent>
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="0" Style="width: 100%">
+            <MudTextField @bind-Value="_searchString" Placeholder="Пошук" Class="mt-0"></MudTextField>
+            <MudTooltip Text="Шукати">
+                <MudIconButton Icon="@Icons.Material.Filled.Search" ButtonType="ButtonType.Submit" OnClick="SearchCategories"></MudIconButton>
+            </MudTooltip>
+            <MudButton Color="Color.Success" Href="/Admin/Categories/Add">
+                <MudStack Row AlignItems="AlignItems.Center">
+                    <MudIcon Icon="@Icons.Material.Filled.Add" />
+                    <MudText>Додати категорію</MudText>
+                </MudStack>
+            </MudButton>
+        </MudStack>
+    </ToolBarContent>
+
+    <HeaderContent>
+        <MudTh>Назва</MudTh>
+        <MudTh>К-сть товарів</MudTh>
+        <MudTh></MudTh>
+        <MudTh></MudTh>
+    </HeaderContent>
+
+    <RowTemplate>
+        <MudTd DataLabel="Назва">@context.Name</MudTd>
+        <MudTd DataLabel="К-сть товарів">@context.ProductsCount</MudTd>
+        <MudTd>
+            <MudTooltip Text="Редагувати">
+                <MudIconButton Icon="@Icons.Material.Outlined.Edit" Color="Color.Secondary" Title="Видалити" Href="@($"/Admin/Categories/{context.Id}")" Target="_blank"></MudIconButton>
+            </MudTooltip>
+        </MudTd>
+        <MudTd>
+            <MudTooltip Text="Видалити">
+                <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Error" Title="Видалити" OnClick="() => DeleteCategory(context)"></MudIconButton>
+            </MudTooltip>
+        </MudTd>
+    </RowTemplate>
+
+    <PagerContent>
+        <MudTablePager />
+    </PagerContent>
+
+</MudTable>
+
+@code
+{
+    private HashSet<Category> _allCategories = new();
+
+    private HashSet<Category> _categories = new();
+
+    private string _searchString { get; set; } = string.Empty;
+
+    [Inject]
+    private ICategoryRepository? _categoryRepository { get; set; }
+    [Inject]
+    private IProductRepository? _productRepository { get; set; }
+
+    protected override void OnInitialized()
+    {
+        Task.Run(async () => _categories = _allCategories = (await _categoryRepository!.GetAllAsync()).ToHashSet()).Wait();
+    }
+
+    protected override async void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            foreach (var category in _categories)
+                category.ProductsCount = await _productRepository!.GetCountByCategoryIdAsync(category.Id);
+            StateHasChanged();
+        }
+    }
+
+    private void SearchCategories()
+    => _categories = _allCategories.Where(item => item.Name.Contains(_searchString)).ToHashSet();
+
+    private async void DeleteCategory(Category category)
+    {
+        try
+        {
+            if (await _categoryRepository!.DeleteAsync(category.Id) is false)
+                throw new Exception();
+            _categories.Remove(category);
+            _snackbar!.Add($"Категорію {category.Name} видалено", Severity.Success);
+        }
+        catch
+        {
+            _snackbar!.Add($"Помилка видалення категорії {category.Name}", Severity.Error);
+        }
+    }
+}

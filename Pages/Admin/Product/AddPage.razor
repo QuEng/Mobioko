@@ -1,0 +1,108 @@
+﻿@page "/admin/products/add"
+
+@layout Layout
+
+<h2>Створення товару</h2>
+
+<MudTextField Class="mb-3" @bind-Value=@_newProduct.Name Label="Назва товару" Variant="Variant.Text" />
+
+<MudTextField AutoGrow Class="mb-3" @bind-Value=@_newProduct.Description Label="Опис" Variant="Variant.Text" Lines="10" />
+
+ @if (_categories.Any())
+{
+    <MudSelect Class="mb-3" @bind-Value=@_newProduct.Category Label="Категорія" Variant="Variant.Text">
+        @foreach (var category in _categories)
+        {
+            <MudSelectItem Value=@category>@category.Name</MudSelectItem>
+        }
+
+    </MudSelect>
+}
+
+<MudSelect Class="mb-3" @bind-Value=@_newProduct.Manufacturer Label="Виробник" Variant="Variant.Text">
+    <MudSelectItem Value=@NullableManufacturer>Не вказано</MudSelectItem>
+    @foreach (var manufacturer in _manufacturers)
+    {
+        <MudSelectItem Value=@manufacturer>@manufacturer.Name</MudSelectItem>
+    }
+</MudSelect>
+
+<MudNumericField Class="mb-3" @bind-Value=@_newProduct.Price T="decimal" Label="Вартість" Variant="Variant.Text" AdornmentText="грн" Adornment="Adornment.End" />
+
+<MudNumericField Class="mb-3" @bind-Value=@_newProduct.Quantity Label="Кількість" Variant="Variant.Text" AdornmentText="шт" Adornment="Adornment.End" />
+
+<MudButton Variant="Variant.Filled" Color="Color.Success" @onclick=Create>
+    <MudText>Створити</MudText>
+</MudButton>
+
+@code
+{
+    private Product _newProduct = new();
+    private HashSet<Category> _categories = new();
+    private HashSet<Manufacturer> _manufacturers = new();
+
+    private Manufacturer? NullableManufacturer = null!;
+
+    [Inject]
+    private IProductRepository? _productRepository { get; set; }
+    [Inject]
+    private ICategoryRepository? _categoryRepository { get; set; }
+    [Inject]
+    private IManufacturerRepository? _manufacturerRepository { get; set; }
+
+    protected override void OnInitialized()
+    {
+        Task.Run(async () =>
+        {
+            _categories = (await _categoryRepository!.GetAllAsync()).ToHashSet();
+            _manufacturers = (await _manufacturerRepository!.GetAllAsync()).ToHashSet();
+        }).Wait();
+
+        if (_categories.Any() is false)
+        {
+            try
+            {
+                _snackbar!.Add("Не вдалось завантажити список категорій", Severity.Error);
+                _navigationManager!.NavigateTo("/admin/products");
+            }
+            catch { }
+        }
+    }
+
+    private async void Create()
+    {
+        if (string.IsNullOrWhiteSpace(_newProduct.Name))
+        {
+            _snackbar!.Add("Введіть назву товару", Severity.Error);
+            return;
+        }
+
+        if (_newProduct.Category is null || _newProduct.Category.Id == 0)
+        {
+            _snackbar!.Add("Виберіть категорію товару", Severity.Error);
+            return;
+        }
+
+        if (_newProduct.Price <= 0)
+        {
+            _snackbar!.Add("Введіть вартість товару", Severity.Error);
+            return;
+        }
+
+        _newProduct.CategoryId = _newProduct.Category.Id;
+        if (_newProduct.Manufacturer is not null)
+        {
+            _newProduct.ManufacturerId = _newProduct.Manufacturer.Id;
+        }
+        try
+        {
+            await _productRepository!.AddAsync(_newProduct);
+            _snackbar!.Add($"Товар {_newProduct.Name} успішно додано.", Severity.Success);
+            _navigationManager!.NavigateTo("/admin/products");
+        }
+        catch
+        {
+            _snackbar.Add("Виникла помилка під час додавання товару.", Severity.Error);
+        }
+    }
+}

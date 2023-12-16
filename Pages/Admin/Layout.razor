@@ -1,0 +1,68 @@
+﻿@using Microsoft.AspNetCore.Authorization
+@inherits LayoutComponentBase
+
+<MudThemeProvider Theme="_myCustomTheme" />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar>
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
+
+    </MudAppBar>
+    <MudDrawer @bind-Open="@_drawerOpen" Variant="@DrawerVariant.Persistent" ClipMode="DrawerClipMode.Never" Color="Color.Primary">
+
+        @if (_drawerOpen)
+        {
+            <MudDrawerHeader>
+
+                <MudText Typo="Typo.h4">name</MudText>
+
+            </MudDrawerHeader>
+        }
+
+        <MudDrawerContainer>
+
+            <MudNavMenu class="menu">
+
+                <MudNavLink Match="NavLinkMatch.All" Href="/Admin" Icon="@Icons.Material.Filled.Home" IconColor="Color.Inherit">Головна</MudNavLink>
+                <MudNavLink Match="NavLinkMatch.Prefix" Href="/Admin/Categories" Icon="@Icons.Material.Filled.Article" IconColor="Color.Inherit">Категорії</MudNavLink>
+                <MudNavLink Match="NavLinkMatch.Prefix" Href="/Admin/Manufacturers" Icon="@Icons.Material.Filled.Article" IconColor="Color.Inherit">Виробники</MudNavLink>
+                <MudNavLink Match="NavLinkMatch.Prefix" Href="/Admin/Products" Icon="@Icons.Material.Filled.PlaylistAddCheck" IconColor="Color.Inherit">Товари</MudNavLink>
+
+            </MudNavMenu>
+
+        </MudDrawerContainer>
+
+    </MudDrawer>
+
+    <MudMainContent Style="padding: 20px; padding-top: calc(var(--mud-appbar-height) + 20px);">
+        @Body
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool _drawerOpen = true;
+
+    private static readonly string[] DefaultFontFamily =
+    {
+        "Montserrat",
+        "system-ui",
+        "-apple-system",
+        "Segoe UI","Roboto",
+        "Helvetica Neue",
+        "Noto Sans",
+        "Liberation Sans",
+        "Arial,sans-serif",
+        "Apple Color Emoji",
+        "Segoe UI Emoji",
+        "Segoe UI Symbol",
+        "Noto Color Emoji"
+    };
+    private MudTheme _myCustomTheme = new MudTheme();
+
+    void DrawerToggle()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+}

@@ -1,0 +1,44 @@
+﻿@page "/admin/manufacturers/add"
+
+@using Mobioko.Repositories.Contracts
+@using Mobioko.Data.Models
+
+@layout Layout
+
+<h2>Створення нового виробника</h2>
+
+<MudTextField Class="mb-3" @bind-Value=@_newManufacturer.Name Label="Назва виробника" Variant="Variant.Text" />
+
+<MudTextField AutoGrow Class="mb-3" @bind-Value=@_newManufacturer.Description Label="Опис" Variant="Variant.Text" Lines="10" />
+
+<MudButton Variant="Variant.Filled" Color="Color.Success" @onclick=Create>
+    <MudText>Створити</MudText>
+</MudButton>
+
+@code
+{
+    [Inject]
+    private IManufacturerRepository? _manufacturerRepository { get; set; }
+
+    private Manufacturer _newManufacturer = new();
+
+    private async Task Create()
+    {
+        if (string.IsNullOrWhiteSpace(_newManufacturer.Name))
+        {
+            _snackbar!.Add("Введіть назву виробника", Severity.Error);
+            return;
+        }
+
+        try
+        {
+            await _manufacturerRepository!.AddAsync(_newManufacturer);
+            _snackbar!.Add($"Виробника {_newManufacturer.Name} створено", Severity.Success);
+            _navigationManager!.NavigateTo("/admin/manufacturers");
+        }
+        catch
+        {
+            _snackbar!.Add("Виникла помилка під час створення виробника", Severity.Error);
+        }
+    }
+}

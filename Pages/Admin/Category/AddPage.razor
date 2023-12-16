@@ -1,0 +1,41 @@
+﻿@page "/admin/categories/add"
+
+@layout Layout
+
+<h2>Створення нової категорії</h2>
+
+<MudTextField Class="mb-3" @bind-Value=@_newCategory.Name Label="Назва категорії" Variant="Variant.Text" />
+
+<MudTextField AutoGrow Class="mb-3" @bind-Value=@_newCategory.Description Label="Опис" Variant="Variant.Text" Lines="10" />
+
+<MudButton Variant="Variant.Filled" Color="Color.Success" @onclick=Create>
+    <MudText>Створити</MudText>
+</MudButton>
+
+@code
+{
+    [Inject]
+    private ICategoryRepository? _categoryRepository { get; set; }
+
+    private Category _newCategory = new();
+
+    private async Task Create()
+    {
+        if (string.IsNullOrWhiteSpace(_newCategory.Name))
+        {
+            _snackbar!.Add("Введіть назву категорії", Severity.Error);
+            return;
+        }
+
+        try
+        {
+            await _categoryRepository!.AddAsync(_newCategory);
+            _snackbar!.Add($"Категорію {_newCategory.Name} створено", Severity.Success);
+            _navigationManager!.NavigateTo("/admin/categories");
+        }
+        catch
+        {
+            _snackbar!.Add("Виникла помилка під час створення категорії", Severity.Error);
+        }
+    }
+}

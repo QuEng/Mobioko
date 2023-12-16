@@ -1,0 +1,57 @@
+﻿@page "/admin/categories/{Id:int}"
+
+@layout Layout
+
+<h2>Редагування категорії</h2>
+
+<MudTextField Class="mb-3" @bind-Value=@_category.Name Label="Назва категорії" Variant="Variant.Text" />
+
+<MudTextField AutoGrow Class="mb-3" @bind-Value=@_category.Description Label="Опис" Variant="Variant.Text" Lines="10" />
+
+<MudButton Variant="Variant.Filled" Color="Color.Success" @onclick=SaveChanges>
+    <MudText>Зберегти зміни</MudText>
+</MudButton>
+
+@code
+{
+    [Parameter]
+    public int Id { get; set; }
+
+    [Inject]
+    private ICategoryRepository? _categoryRepository { get; set; }
+
+    private Category _category = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _category = await _categoryRepository!.GetByIdAsync(Id);
+        if (_category is null)
+        {
+            try
+            {
+                _navigationManager!.NavigateTo("/admin/categories");
+            }
+            catch { }
+        }
+    }
+
+    private async Task SaveChanges()
+    {
+        if (string.IsNullOrWhiteSpace(_category.Name))
+        {
+            _snackbar!.Add("Введіть назву категорії", Severity.Error);
+            return;
+        }
+
+        try
+        {
+            await _categoryRepository!.UpdateAsync(_category);
+            _snackbar!.Add($"Категорію {_category.Name} оновлено", Severity.Success);
+            _navigationManager!.NavigateTo("/admin/categories");
+        }
+        catch
+        {
+            _snackbar!.Add("Виникла помилка під час збереження категорії", Severity.Error);
+        }
+    }
+}

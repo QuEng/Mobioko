@@ -1,0 +1,132 @@
+﻿@page "/admin/products"
+
+@layout Layout
+
+<h2>Товари</h2>
+
+<MudTabs Elevation="0">
+    @foreach (var category in _categories)
+    {
+        <MudTabPanel Text="@category.Name" BadgeData="@category.ProductsCount" BadgeColor="Color.Info" OnClick=@(() => OnSelectCategory(category.Id)) />
+    }
+</MudTabs>
+
+<MudTable Items="_products"
+          Hover="true"
+          HorizontalScrollbar="true"
+          FixedHeader="true"
+          RowsPerPage="10"
+          Elevation="0">
+
+    <ToolBarContent>
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="0" Style="width: 100%">
+            <MudTextField @bind-Value="_searchString" Placeholder="Пошук" Class="mt-0"></MudTextField>
+            <MudTooltip Text="Шукати">
+                <MudIconButton Icon="@Icons.Material.Filled.Search" ButtonType="ButtonType.Submit" OnClick="SearchProducts"></MudIconButton>
+            </MudTooltip>
+            <MudButton Color="Color.Success" Href="/Admin/Products/Add">
+                <MudStack Row AlignItems="AlignItems.Center">
+                    <MudIcon Icon="@Icons.Material.Filled.Add" />
+                    <MudText>Додати товар</MudText>
+                </MudStack>
+            </MudButton>
+        </MudStack>
+    </ToolBarContent>
+
+    <HeaderContent>
+        <MudTh>Назва</MudTh>
+        <MudTh>К-сть</MudTh>
+        <MudTh>Ціна</MudTh>
+        <MudTh></MudTh>
+        <MudTh></MudTh>
+    </HeaderContent>
+
+    <RowTemplate>
+        <MudTd DataLabel="Назва">@context.Name</MudTd>
+        <MudTd DataLabel="К-сть">@context.Quantity шт</MudTd>
+        <MudTd DataLabel="Ціна">@context.Price грн</MudTd>
+        <MudTd>
+            <MudTooltip Text="Редагувати">
+                <MudIconButton Icon="@Icons.Material.Outlined.Edit" Color="Color.Secondary" Title="Видалити" Href="@($"/Admin/Products/{context.Id}")" Target="_blank"></MudIconButton>
+            </MudTooltip>
+        </MudTd>
+        <MudTd>
+            <MudTooltip Text="Видалити">
+                <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Error" Title="Видалити" OnClick="() => DeleteProduct(context)"></MudIconButton>
+            </MudTooltip>
+        </MudTd>
+    </RowTemplate>
+
+    <PagerContent>
+        <MudTablePager />
+    </PagerContent>
+
+</MudTable>
+@code
+{
+    private HashSet<Product> _allProducts = new();
+    private HashSet<Product> _products = new();
+    private HashSet<Category> _categories = new();
+
+    private string _searchString { get; set; } = string.Empty;
+
+    [Inject]
+    private IProductRepository? _productRepository { get; set; }
+    [Inject]
+    private ICategoryRepository? _categoryRepository { get; set; }
+
+    protected override void OnInitialized()
+    {
+        Task.Run(async () =>
+        {
+            _categories = (await _categoryRepository!.GetAllAsync()).ToHashSet();
+            if (_categories.Any())
+                LoadProductsByCategoryId(_categories.First().Id);
+        }).Wait();
+
+    }
+
+    protected override async void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            foreach (var category in _categories)
+                category.ProductsCount = await _productRepository!.GetCountByCategoryIdAsync(category.Id);
+            StateHasChanged();
+        }
+    }
+
+    private void SearchProducts()
+        => _products = _allProducts.Where(item => item.Name.Contains(_searchString)).ToHashSet();
+
+    private async void DeleteProduct(Product product)
+    {
+        try
+        {
+            product.IsDeleted = true;
+            if (await _productRepository!.UpdateAsync(product) is false)
+                throw new Exception();
+            _products.Remove(product);
+            _allProducts.Remove(product);
+            StateHasChanged();
+            _snackbar!.Add($"Товар {product.Name} видалено", Severity.Success);
+        }
+        catch
+        {
+            _snackbar!.Add($"Помилка видалення товару {product.Name}", Severity.Error);
+        }
+    }
+
+    private void OnSelectCategory(int categoryId)
+    {
+        LoadProductsByCategoryId(categoryId);
+
+        if (string.IsNullOrWhiteSpace(_searchString) is false)
+            SearchProducts();
+
+        StateHasChanged();
+    }
+
+    private async void LoadProductsByCategoryId(int categoryId)
+        => _products = _allProducts = (await _productRepository!.GetAllByCategoryIdAsync(categoryId)).ToHashSet();
+}
